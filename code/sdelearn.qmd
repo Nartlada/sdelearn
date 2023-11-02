@@ -1,0 +1,243 @@
+---
+title: "SD e-Learning"
+date: today
+format:
+  html:
+    embed-resources: true
+    toc: true
+editor: visual
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  cache = FALSE
+)
+
+# Packages
+source(here::here('code', 'libraries.R'))
+
+# Functions
+source(here::here('code', 'functions.R'))
+
+# Theme for gtsummary output
+theme_gtsummary_compact()
+```
+
+```{r data}
+df <- import(here('data', 'data.xlsx')) %>%
+  clean_names() %>%
+  mutate(
+    qtype = factor(
+      qtype,
+      levels = c('นักศึกษาแพทย์', 'นักศึกษาพยาบาล'),
+      labels = c('Medical', 'Nurse')
+    ),
+    agegrp = cut(
+      q11,
+      breaks = c(0, 20, Inf),
+      labels = c('<= 20 years', '> 20 years'),
+    ),
+    q12 = factor(
+      q12,
+      levels = c('ชาย', 'หญิง', 'ไม่ระบุ'),
+      labels = c('Male', 'Female', 'Not specified')
+    ),
+    q21 = factor(q21,
+                 levels = c('เคย', 'ไม่เคย'),
+                 labels = c('Yes', 'No')),
+    across(num_range('q21', 1:4), ~ factor(
+      .x,
+      levels = c('ใช่', 'ไม่ใช่'),
+      labels = c('Yes', 'No')
+    )),
+    across(c('q221', 'q231', 'q241', 'q26', 'q27'), ~ factor(
+      .x,
+      levels = c('กังวลมาก', 'ค่อนข้างกังวล', 'กังวลเล็กน้อย', 'ไม่กังวลเลย'),
+      labels = c(
+        'Very worried',
+        'Somewhat worried',
+        'A little worried',
+        'Not at all worried'
+      )
+    )),
+    across(c('q221', 'q231', 'q241', 'q26', 'q27'), worry_score, .names = "{col}_score"),
+    across(q41:q47, ~ factor(
+      .x,
+      levels = c('ไม่มี', 'บางคน', 'ส่วนใหญ่', 'ทั้งหมด'),
+      labels = c(
+        'No one',
+        'Some',
+        'Most',
+        'All'
+      )
+    )),
+    across(q41:q42, norm_score, .names = "{col}_score"),
+    across(q43:q47, norm_score_rev, .names = "{col}_score")
+  ) %>% 
+  set_variable_labels(
+    q11 = 'Age (years)',
+    agegrp = 'Age group',
+    q12 = 'Gender',
+    q21 = '2.1 Contact/take care',
+    q211 = '2.1.1 Wear double gloves when taking care PLHIV',
+    q212 = '2.1.2 Wear double gloves when taking care other patients',
+    q213 = '2.1.3 Use special infection control when taking care PLHIV',
+    q214 = '2.1.4 Use special infection control when taking care other patients',
+    q221 = '2.2.1 Worried would you be about getting HIV infection if you have to touch the clothing, bedding or belongings',
+    q221_score = 'Mean score',
+    q231 = '2.3.1 Worried would you be about getting HIV infection if you have to dress the wounds of HIV/AIDS patients',
+    q231_score = 'Mean score',
+    q241 = '2.4.1 Worried would you be about getting HIV infection if you have to draw blood',
+    q241_score = 'Mean score',
+    q26 = '2.6 If you were tested, how worried were you that you might be treated differently or discriminated against if you were to test positive',
+    q26_score = 'Mean score',
+    q27 = '2.7 If your test was positive, how worried were you that you might be treated differently or discriminated against if you were to test positive',
+    q27_score = 'Mean score',
+    q41 = '4.1 How many would share dishes or glasses with a person with HIV?',
+    q41_score = 'Mean score',
+    q42 = '4.2 How many would be comfortable having a person with HIV cooking for them?',
+    q42_score = 'Mean score',
+    q43 = '4.3 How many would avoid visiting the homes of people with HIV?',
+    q43_score = 'Mean score',
+    q44 = '4.4 How many think that if someone has HIV. It’s due to having engaged in bad behaviors',
+    q44_score = 'Mean score',
+    q45 = '4.5 How many think that people with HIV deserve their disease',
+    q45_score = 'Mean score',
+    q46 = '4.6 How many think that people with HIV should feel guilty about their infection',
+    q46_score = 'Mean score',
+    q47 = '4.7 How many think that people with HIV have brought shame upon their families',
+    q47_score = 'Mean score'
+  )
+n <- nrow(df)
+```
+
+#### Table 1: Background characteristics of the participants (n = `r n`)
+
+```{r t1}
+tbl_summary(
+  df,
+  by = qtype,
+  type = q11 ~ 'continuous2',
+  statistic = q11 ~ c("{mean} ({sd})", "{median} ({p25}, {p75})", "{min}, {max}"),
+  digits = list(q11 ~ c(1, 1, 0, 0, 0, 0, 0),
+                all_categorical() ~ c(0, 1)),
+  include = c(q12, q11, agegrp)
+) %>%
+  bold_labels() %>%
+  modify_header(
+    label ~ 'Background characteristics',
+    all_stat_cols() ~ "**{level}**<br>N = {n}"
+  ) %>% 
+  as_gt() %>%
+  tab_options(table.border.bottom.style = 'none')
+```
+
+#### Table 2: Contact with people living with HIV (n = `r n`)
+
+```{r t2}
+tbl_summary(
+  df,
+  by = qtype,
+  type = everything() ~ 'categorical',
+  digits = list(all_categorical() ~ c(0, 1)),
+  include = c(q21:q214),
+  missing = 'no'
+) %>%
+  bold_labels() %>%
+  add_p() %>%
+  bold_p() %>%
+  modify_header(label ~ '',
+                all_stat_cols() ~ "**{level}**<br>N = {n}") %>%
+  modify_column_indent(columns = label, 
+                       rows = variable %in% c('q211', 'q212', 'q213', 'q214')) %>%
+  modify_column_indent(columns = label, 
+                       rows = variable %in% c('q211', 'q212', 'q213', 'q214') & row_type == 'level',
+                       double_indent = TRUE) %>%
+  as_gt() %>%
+  tab_options(table.border.bottom.style = 'none')
+```
+
+#### Table 3: Worried about getting HIV infection (n = `r n`)
+
+```{r t3}
+t3a <- tbl_summary(
+  df,
+  by = qtype,
+  type = ends_with('_score') ~ 'continuous',
+  statistic = ends_with('_score') ~ '{mean}',
+  digits = list(all_categorical() ~ c(0, 1),
+                all_continuous() ~ c(1, 1)),
+  include = c(q221, q221_score, q231, q231_score, q241, q241_score),
+  missing = 'no'
+) %>%
+  bold_labels() %>%
+  add_p(ends_with('_score') ~ "t.test") %>%
+  bold_p() %>%
+  modify_header(label ~ '',
+                all_stat_cols() ~ "**{level}**<br>N = {n}")
+
+t3b <- tbl_summary(
+  df,
+  by = qtype,
+  type = ends_with('_score') ~ 'continuous',
+  statistic = ends_with('_score') ~ '{mean}',
+  digits = list(all_categorical() ~ c(0, 1),
+                all_continuous() ~ c(1, 1)),
+  include = c(q26, q26_score, q27, q27_score),
+  missing = 'no'
+) %>%
+  bold_labels() %>%
+  add_p(ends_with('_score') ~ "t.test") %>%
+  bold_p() %>%
+  modify_header(label ~ '',
+                all_stat_cols() ~ "**{level}**<br>N = {n}")
+
+tbl_stack(
+  list(t3a, t3b),
+  group_header = c(
+    'Worried about getting HIV infection',
+    'Worried about discriminated against if getting HIV testing'
+  )
+) %>%
+  modify_column_indent(columns = label,
+                       rows = var_label == 'Mean score') %>%
+  as_gt() %>%
+  tab_options(table.border.bottom.style = 'none',
+              row_group.font.weight = 'bold',
+              row_group.background.color = '#eeeeee')
+```
+
+#### Table 6: Professional community norms
+
+```{r t6}
+tbl_summary(
+  df,
+  by = qtype,
+  type = ends_with('_score') ~ 'continuous',
+  statistic = ends_with('_score') ~ '{mean}',
+  digits = list(all_categorical() ~ c(0, 1),
+                all_continuous() ~ c(1, 1)),
+  include = c(q41, q41_score, 
+              q42, q42_score, 
+              q43, q43_score, 
+              q44, q44_score, 
+              q45, q45_score, 
+              q46, q46_score, 
+              q47, q47_score),
+  missing = 'no'
+) %>%
+  bold_labels() %>%
+  add_p(ends_with('_score') ~ "t.test") %>%
+  bold_p() %>%
+  modify_header(label ~ '',
+                all_stat_cols() ~ "**{level}**<br>N = {n}") %>% 
+  modify_column_indent(columns = label,
+                       rows = var_label == 'Mean score') %>%
+  as_gt() %>%
+  tab_options(table.border.bottom.style = 'none')
+```
+
+#### 
