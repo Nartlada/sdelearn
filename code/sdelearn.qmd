@@ -75,7 +75,9 @@ df <- import(here('data', 'data.xlsx')) %>%
       )
     )),
     across(q41:q42, norm_score, .names = "{col}_score"),
-    across(q43:q47, norm_score_rev, .names = "{col}_score")
+    across(q43:q47, norm_score_rev, .names = "{col}_score"),
+    sum4a_score = rowSums(across(q41_score:q43_score), na.rm = TRUE),
+    sum4b_score = rowSums(across(q44_score:q47_score), na.rm = TRUE)
   ) %>% 
   set_variable_labels(
     q11 = 'Age (years)',
@@ -102,6 +104,7 @@ df <- import(here('data', 'data.xlsx')) %>%
     q42_score = 'Mean score',
     q43 = '4.3 How many would avoid visiting the homes of people with HIV?',
     q43_score = 'Mean score',
+    sum4a_score = 'Sum score  4.1 - 4.3',
     q44 = '4.4 How many think that if someone has HIV. It’s due to having engaged in bad behaviors',
     q44_score = 'Mean score',
     q45 = '4.5 How many think that people with HIV deserve their disease',
@@ -109,7 +112,8 @@ df <- import(here('data', 'data.xlsx')) %>%
     q46 = '4.6 How many think that people with HIV should feel guilty about their infection',
     q46_score = 'Mean score',
     q47 = '4.7 How many think that people with HIV have brought shame upon their families',
-    q47_score = 'Mean score'
+    q47_score = 'Mean score',
+    sum4b_score = 'Sum score  4.4 - 4.7'
   )
 n <- nrow(df)
 ```
@@ -223,10 +227,12 @@ tbl_summary(
   include = c(q41, q41_score, 
               q42, q42_score, 
               q43, q43_score, 
+              sum4a_score,
               q44, q44_score, 
               q45, q45_score, 
               q46, q46_score, 
-              q47, q47_score),
+              q47, q47_score,
+              sum4b_score),
   missing = 'no'
 ) %>%
   bold_labels() %>%
