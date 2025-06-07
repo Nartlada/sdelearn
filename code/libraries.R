@@ -5,5 +5,6 @@ pacman::p_load(rio,
                janitor,
                labelled,
                gtsummary,
-               bstfun,
-               gt)
+               gt,
+               lmtest,
+               psych)
